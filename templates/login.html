@@ -1,0 +1,128 @@
+<html>
+    <head>
+        <title>prisijungimas</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
+        <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet" />
+        <style>
+            html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #222; /* tamsus fonas */
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  user-select: none;
+}
+
+/* Konteineris formai centruoti */
+.container {
+  max-width: 360px;
+  margin: 80px auto;
+  padding: 30px 25px;
+  background-color: #333;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.7);
+  text-align: center;
+}
+
+/* Antraštė */
+.container h1 {
+  margin-bottom: 25px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.4rem;
+  color: #e03e3e;
+  text-shadow: 0 0 8px #e03e3e;
+}
+
+/* Įvesties laukai */
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 12px 15px;
+  margin: 12px 0 20px 0;
+  border: none;
+  border-radius: 6px;
+  background-color: #555;
+  color: white;
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+  outline: none;
+  background-color: #666;
+}
+
+/* Mygtukas */
+input[type="submit"] {
+  width: 100%;
+  background-color: #e03e3e;
+  color: white;
+  border: none;
+  padding: 14px 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 0 10px #e03e3e;
+  transition: background-color 0.3s ease;
+}
+
+input[type="submit"]:hover {
+  background-color: #bf2e2e;
+}
+
+/* Flash žinutės */
+.flash-massage {
+  background-color: #bf2e2e;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  box-shadow: 0 0 8px #bf2e2e;
+  font-weight: bold;
+  color: white;
+  user-select: text;
+}
+
+/* Nuoroda po forma */
+.container p {
+  margin-top: 15px;
+  font-size: 0.95rem;
+}
+
+.container a {
+  color: #e03e3e;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.3s ease;
+}
+
+.container a:hover {
+  color: #bf2e2e;
+  text-decoration: underline;
+}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Prisijunkti:</h1>
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <div class="flash-massage"> {{ message }} </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form method="post">
+                <input type="text" name="username" placeholder="Vartotojo Vardas" required>
+                <input type="password" name="password" placeholder="Slaptažodis" required>
+                <input type="submit" value="Prisijungti">
+            </form>
+            <p>Neturite paskyros? <a href="{{url_for('register')}}">Junkis čia!</a></p>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stichijų žaidimas</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+  }
+  #gameArea {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 60px);
+    background: #87ceeb;
+    overflow: hidden;
+    border-bottom: 2px solid black;
+  }
+  #player {
+    position: absolute;
+    width: 40px;
+    height: 60px;
+    background: red;
+    bottom: 0;
+    left: 280px;
+    border-radius: 5px;
+  }
+  .obstacle {
+    border-radius: 5px;
+    position: absolute;
+    width: 40px;
+    height: 40px;
+  }
+  #bottomBar {
+    height: 60px;
+    background-color: #222;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    box-sizing: border-box;
+    font-size: 18px;
+  }
+  #disasterName {
+    font-weight: bold;
+    font-size: 20px;
+  }
+  button {
+    padding: 8px 18px;
+    margin-left: 10px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background-color: #45a049;
+  }
+  #title {
+    font-weight: bold;
+    font-size: 22px;
+  }
+  #buttonGroup {
+    display: flex;
+    align-items: center;
+  }
+  #healthDisplay {
+    font-weight: bold;
+    font-size: 18px;
+    color: #ff4444;
+  }
+  #timer {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    font-size: 18px;
+    background-color: rgba(0,0,0,0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+  #win-message {
+    display: none;
+    position: fixed;
+    bottom: 60px;
+    left: 10px;
+    background-color: green;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<div id="gameArea">
+  <div id="player"></div>
+</div>
+
+<div id="bottomBar">
+  <div id="title">Stichijų žaidimas</div>
+  <div id="disasterName">–</div>
+  <div id="healthDisplay">❤ 3</div>
+  <div id="buttonGroup">
+    <div id="timer">Liko laiko: 120 s</div>
+    <div id="win-message">🎉 Tu išgyvenai 120 sekundžių – Tu laimėjai! 🎉</div>
+    <button id="restartBtn">Restart</button>
+    <form action="{{ url_for('menu') }}" method="get" style="margin-left:10px;">
+      <button type="submit" style="padding: 10px 20px; font-size: 16px;">
+        Grįžti į meniu
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const player = document.getElementById("player");
+  const disasterName = document.getElementById("disasterName");
+  const gameArea = document.getElementById("gameArea");
+  const healthDisplay = document.getElementById("healthDisplay");
+  const winMsg = document.getElementById("win-message");
+  const timerEl = document.getElementById("timer");
+
+  let health = 3;
+  let playerX = 280;
+  let playerY = 0;
+  let isJumping = false;
+  let jumpVelocity = 0;
+
+  const jumpPower = 12;
+  const gravity = 0.15;
+
+  let obstacles = [];
+  let obstacleInterval;
+  let gameLoopId;
+  let survivalTime = 120;
+  let survivalInterval;
+
+  function getGameWidth() {
+    return gameArea.clientWidth;
+  }
+  const gameHeight = gameArea.clientHeight;
+
+  const disasters = {
+    "LAVINA": {
+      desc: "Lavina – saugokis krentančių akmenų! Pasitrauk nuo jų!",
+      obstacleSpeed: 3,
+      obstacleSpawnRate: 1500,
+      obstacleBehavior: "fall",
+      obstacleType: "akmuo"
+    },
+    "POTVYNIS": {
+      desc: "Potvynis – vandenį bėk į aukštumą!",
+      obstacleSpeed: 2,
+      obstacleSpawnRate: 2000,
+      obstacleBehavior: "fall",
+      obstacleType: "vanduo"
+    },
+    "UGNIKALNIS": {
+      desc: "Ugnikalnis – sprogimai ir lava, venk lavos srovių!",
+      obstacleSpeed: 4,
+      obstacleSpawnRate: 1000,
+      obstacleBehavior: "horizontal",
+      obstacleType: "lava"
+    },
+    "AUDRA": {
+      desc: "Audra – smarkus vėjas neša kliūtis horizontaliai, saugokis!",
+      obstacleSpeed: 5,
+      obstacleSpawnRate: 900,
+      obstacleBehavior: "horizontal",
+      obstacleType: "vėjas"
+    },
+    "DULKIŲ AUDRA": {
+      desc: "Dulkių audra – smėlio gūsiai kyla iš apačios!",
+      obstacleSpeed: 3,
+      obstacleSpawnRate: 1500,
+      obstacleBehavior: "rise",
+      obstacleType: "smėlis"
+    }
+  };
+
+  let currentDisaster;
+
+  function updatePlayerPosition() {
+    player.style.left = playerX + "px";
+    player.style.bottom = playerY + "px";
+  }
+
+  function createObstacle() {
+    const obs = document.createElement("div");
+    obs.classList.add("obstacle");
+
+    switch(currentDisaster.obstacleType) {
+      case "akmuo": obs.style.background = "gray"; break;
+      case "vanduo": obs.style.background = "blue"; break;
+      case "lava": obs.style.background = "orange"; break;
+      case "vėjas": obs.style.background = "lightgray"; break;
+      case "smėlis": obs.style.background = "tan"; break;
+      default: obs.style.background = "black";
+    }
+
+    obs.style.position = "absolute";
+    obs.style.width = "40px";
+    obs.style.height = "40px";
+    obs.style.borderRadius = "5px";
+
+    const gameWidth = getGameWidth();
+
+    if(currentDisaster.obstacleBehavior === "fall") {
+      obs.style.top = "-40px";
+      obs.style.left = Math.random() * (gameWidth - 40) + "px";
+    } else if(currentDisaster.obstacleBehavior === "rise") {
+      obs.style.bottom = "-40px";
+      obs.style.left = Math.random() * (gameWidth - 40) + "px";
+    } else if(currentDisaster.obstacleBehavior === "horizontal") {
+      obs.style.top = Math.random() * (gameHeight - 40) + "px";
+      obs.style.left = gameWidth + "px";
+    }
+
+    gameArea.appendChild(obs);
+    obstacles.push(obs);
+  }
+
+  function isColliding(rect1, rect2) {
+    return !(
+      rect1.right < rect2.left ||
+      rect1.left > rect2.right ||
+      rect1.bottom < rect2.top ||
+      rect1.top > rect2.bottom
+    );
+  }
+
+  function hpLoss() {
+    health--;
+    healthDisplay.textContent = "❤ " + health;
+    if(health <= 0) {
+      endGame(false);
+    }
+  }
+
+  function endGame(won) {
+    clearInterval(obstacleInterval);
+    cancelAnimationFrame(gameLoopId);
+    clearInterval(survivalInterval);
+
+    obstacles.forEach(o => o.remove());
+    obstacles = [];
+
+    if(won) {
+      winMsg.style.display = 'block';
+      timerEl.style.display = 'none';
+    } else {
+      alert("Pralaimėjai! Stichija tave nugalėjo.");
+      winMsg.style.display = 'none';
+      timerEl.style.display = 'block';
+    }
+  }
+
+  function gameLoop() {
+    if(isJumping) {
+      playerY += jumpVelocity;
+      jumpVelocity -= gravity;
+
+      if(playerY <= 0) {
+        playerY = 0;
+        isJumping = false;
+        jumpVelocity = 0;
+      }
+      updatePlayerPosition();
+    }
+
+    const playerRect = player.getBoundingClientRect();
+
+    const gameWidth = getGameWidth();
+
+    for(let i = obstacles.length - 1; i >= 0; i--) {
+      let obs = obstacles[i];
+
+      let top = parseFloat(obs.style.top) || 0;
+      let bottom = parseFloat(obs.style.bottom) || 0;
+      let left = parseFloat(obs.style.left) || 0;
+
+      const speedMultiplier = 1.5;
+
+      if(currentDisaster.obstacleBehavior === "fall") {
+        top += currentDisaster.obstacleSpeed * speedMultiplier;
+        obs.style.top = top + "px";
+        if(top > gameHeight) {
+          obs.remove();
+          obstacles.splice(i, 1);
+          continue;
+        }
+      } else if(currentDisaster.obstacleBehavior === "rise") {
+        bottom += currentDisaster.obstacleSpeed * speedMultiplier;
+        obs.style.bottom = bottom + "px";
+        if(bottom > gameHeight) {
+          obs.remove();
+          obstacles.splice(i, 1);
+          continue;
+        }
+      } else if(currentDisaster.obstacleBehavior === "horizontal") {
+        left -= currentDisaster.obstacleSpeed * speedMultiplier;
+        obs.style.left = left + "px";
+        if(left < -40) {
+          obs.remove();
+          obstacles.splice(i, 1);
+          continue;
+        }
+      }
+
+      const obsRect = obs.getBoundingClientRect();
+
+      if(isColliding(playerRect, obsRect)) {
+        hpLoss();
+        obs.remove();
+        obstacles.splice(i, 1);
+      }
+    }
+
+    gameLoopId = requestAnimationFrame(gameLoop);
+  }
+
+  function startNewDisaster() {
+    if(obstacleInterval) clearInterval(obstacleInterval);
+    if(gameLoopId) cancelAnimationFrame(gameLoopId);
+    if(survivalInterval) clearInterval(survivalInterval);
+
+    health = 3;
+    healthDisplay.textContent = "❤ " + health;
+    survivalTime = 120;
+    timerEl.textContent = `Liko laiko: ${survivalTime} s`;
+    timerEl.style.display = 'block';
+    winMsg.style.display = 'none';
+
+    const keys = Object.keys(disasters);
+    const randKey = keys[Math.floor(Math.random() * keys.length)];
+    currentDisaster = disasters[randKey];
+    disasterName.textContent = randKey;
+
+    obstacles.forEach(o => o.remove());
+    obstacles = [];
+
+    createObstacle();
+    createObstacle();
+
+    obstacleInterval = setInterval(() => {
+      createObstacle();
+      if (Math.random() < 0.7) createObstacle();
+      if (Math.random() < 0.3) createObstacle();
+    }, currentDisaster.obstacleSpawnRate / 2);
+
+    survivalInterval = setInterval(() => {
+      survivalTime--;
+      timerEl.textContent = `Liko laiko: ${survivalTime} s`;
+      if (survivalTime <= 0) {
+        clearInterval(survivalInterval);
+        endGame(true);
+      }
+    }, 1000);
+
+    gameLoop();
+  }
+
+  document.addEventListener("keydown", (e) => {
+    const gameWidth = getGameWidth();
+
+    if (e.code === "ArrowLeft") {
+      playerX -= 10;
+      if (playerX < 0) playerX = 0;
+      updatePlayerPosition();
+    }
+    if (e.code === "ArrowRight") {
+      playerX += 10;
+      if (playerX > gameWidth - 40) playerX = gameWidth - 40;
+      updatePlayerPosition();
+    }
+    if (e.code === "Space") {
+      e.preventDefault();
+      if (!isJumping) {
+        isJumping = true;
+        jumpVelocity = jumpPower;
+      }
+    }
+  });
+
+  const restartBtn = document.getElementById("restartBtn");
+  restartBtn.addEventListener("click", () => {
+    startNewDisaster();
+  });
+
+  // Start the game initially
+  startNewDisaster();
+
+</script>
+
+</body>
+</html>

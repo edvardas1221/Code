@@ -1,0 +1,129 @@
+<html>
+    <head>
+        <title>registracija</title>
+        <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
+        <style>
+            body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Rubik', sans-serif;
+  background: linear-gradient(135deg, #0055ff, #00aaff);
+  color: #111;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+}
+
+.container {
+  background: #f4f6f8;
+  padding: 40px 50px;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  width: 350px;
+  text-align: center;
+}
+
+h1 {
+  font-weight: 700;
+  margin-bottom: 30px;
+}
+
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 12px 15px;
+  margin: 12px 0;
+  border: 2px solid #0078ff;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+  border-color: #004bb5;
+}
+
+input[type="submit"] {
+  width: 100%;
+  background-color: #0078ff;
+  border: none;
+  padding: 15px 0;
+  border-radius: 10px;
+  color: white;
+  font-weight: 700;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 20px;
+  user-select: none;
+}
+
+input[type="submit"]:hover {
+  background-color: #005bb5;
+}
+
+p {
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+a {
+  color: #0078ff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.flash-massage {
+  margin: 10px 0 0 0;
+  color: #d8000c;
+  background-color: #ffbaba;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.join-fun {
+  margin: 28px 0 20px 0;
+  font-size: 1.15rem;
+  color: #333;
+  font-weight: 600;
+  text-align: center;
+  user-select: none;
+}
+
+.join-fun strong {
+  color: #0066ff; /* Roblox mėlyna */
+  text-shadow: 0 0 4px rgba(0, 102, 255, 0.7);
+}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Registruotis:</h1>
+            <p class="join-fun">Prisijunk prie <strong>linksmybių</strong>!</p>
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <div class="flash-massage"> {{ message }} </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form method="post">
+                <input type="text" name="username" placeholder="Vartotojo Vardas" required>
+                <input type="password" name="password" placeholder="Slaptažodis" required>
+                <input type="submit" value="Registruotis">
+            </form>
+            <p>Jau turite paskyra? <a href="{{url_for('login')}}">prisijungti čia!</a></p>
+        </div>
+    </body>
+</html>

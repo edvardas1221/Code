@@ -1,0 +1,342 @@
+
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gaudynių žaidimas - Protingesnis robotas</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    background: #222;
+    color: white;
+    user-select: none;
+  }
+  #gameArea {
+    position: relative;
+    margin: 20px auto;
+    background: #333;
+    width: 900px;
+    height: 600px;
+    border: 3px solid #555;
+    overflow: hidden;
+  }
+  #player, #robot {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    transition: background 0.3s;
+  }
+  #player {
+    background: red;
+    left: 50px;
+    top: 280px;
+  }
+  #robot {
+    background: blue;
+    left: 810px;
+    top: 280px;
+  }
+  #infoBar {
+    width: 900px;
+    margin: 10px auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  button {
+    padding: 8px 15px;
+    background: #4CAF50;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+    font-size: 16px;
+  }
+  button:hover {
+    background: #45a049;
+  }
+  #message {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  #modeSelect {
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  #modeSelect button {
+    margin: 0 10px;
+  }
+
+  /* Mygtukas grįžti į meniu - mėlynas */
+  #menuBtn {
+    padding: 8px 15px;
+    background: #2196F3;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+    font-size: 16px;
+  }
+  #menuBtn:hover {
+    background: #0b7dda;
+  }
+</style>
+</head>
+<body>
+
+<!-- Meniu blokas -->
+<div id="menu" style="text-align:center; margin: 20px auto; max-width: 900px;">
+  <h2>Pasirink režimą</h2>
+  <button id="runModeBtn">Bėgti nuo roboto</button>
+  <button id="catchModeBtn">Gaudyti robotą</button>
+</div>
+
+<!-- Žaidimo zona -->
+<div id="gameArea" style="display:none;">
+  <div id="player"></div>
+  <div id="robot"></div>
+</div>
+
+<div id="infoBar" style="max-width: 900px; margin: 10px auto; display:none;">
+  <div id="timer">Liko laiko: 120 s</div>
+  <div id="message"></div>
+  <button id="restartBtn" style="display:none;">Restart</button>
+  <button id="menuBtn" style="display:none;" onclick="window.location.href='/menu'">Grįžti į meniu</button>
+</div>
+
+<script>
+  const player = document.getElementById("player");
+  const robot = document.getElementById("robot");
+  const timerEl = document.getElementById("timer");
+  const messageEl = document.getElementById("message");
+  const restartBtn = document.getElementById("restartBtn");
+  const menuBtn = document.getElementById("menuBtn");
+
+  const runModeBtn = document.getElementById("runModeBtn");
+  const catchModeBtn = document.getElementById("catchModeBtn");
+
+  const gameArea = document.getElementById("gameArea");
+  const infoBar = document.getElementById("infoBar");
+  const menu = document.getElementById("menu");
+
+  const gameWidth = gameArea.clientWidth;
+  const gameHeight = gameArea.clientHeight;
+
+  let playerPos = { x: 50, y: 280 };
+  let robotPos = { x: 810, y: 280 };
+
+  let playerSpeed = 10;
+  let robotSpeed = 5;
+
+  let keysPressed = {};
+
+  let timer = 120;
+  let timerInterval;
+
+  let gameRunning = false;
+  let mode = null; // "run" arba "catch"
+
+  function isColliding(a, b) {
+    return !(
+      a.x + 40 < b.x ||
+      a.x > b.x + 40 ||
+      a.y + 40 < b.y ||
+      a.y > b.y + 40
+    );
+  }
+
+  function updatePositions() {
+    player.style.left = playerPos.x + "px";
+    player.style.top = playerPos.y + "px";
+
+    robot.style.left = robotPos.x + "px";
+    robot.style.top = robotPos.y + "px";
+  }
+
+  function vectorTo(from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if(dist === 0) return { dist: 0, vx: 0, vy: 0 };
+    return { dist, vx: dx / dist, vy: dy / dist };
+  }
+
+  function getPlayerMovementVector() {
+    let vx = 0;
+    let vy = 0;
+    if(keysPressed["ArrowLeft"]) vx -= 1;
+    if(keysPressed["ArrowRight"]) vx += 1;
+    if(keysPressed["ArrowUp"]) vy -= 1;
+    if(keysPressed["ArrowDown"]) vy += 1;
+
+    const len = Math.sqrt(vx*vx + vy*vy);
+    if(len === 0) return { vx: 0, vy: 0 };
+    return { vx: vx / len, vy: vy / len };
+  }
+
+  function updateRobot() {
+    const { dist, vx, vy } = vectorTo(robotPos, playerPos);
+
+    if(dist === 0) return;
+
+    if(mode === "run") {
+      if(dist > 50) {
+        robotPos.x += vx * robotSpeed;
+        robotPos.y += vy * robotSpeed;
+      } else {
+        const sideVx = -vy;
+        const sideVy = vx;
+        const t = Date.now() / 300;
+        const factor = Math.sin(t) > 0 ? 1 : -1;
+        robotPos.x += (vx * 0.5 + sideVx * 0.5 * factor) * robotSpeed;
+        robotPos.y += (vy * 0.5 + sideVy * 0.5 * factor) * robotSpeed;
+      }
+    } else if(mode === "catch") {
+      let dx = -vx;
+      let dy = -vy;
+
+      const boundaryBuffer = 60;
+
+      if(robotPos.x < boundaryBuffer && dx < 0) dx = Math.abs(dx);
+      if(robotPos.x > gameWidth - 40 - boundaryBuffer && dx > 0) dx = -Math.abs(dx);
+      if(robotPos.y < boundaryBuffer && dy < 0) dy = Math.abs(dy);
+      if(robotPos.y > gameHeight - 40 - boundaryBuffer && dy > 0) dy = -Math.abs(dy);
+
+      if(dist < 150) {
+        const t = Date.now() / 300;
+        const sideVx = -vy;
+        const sideVy = vx;
+        const factor = Math.sin(t) > 0 ? 1 : -1;
+        dx += sideVx * 0.7 * factor;
+        dy += sideVy * 0.7 * factor;
+      }
+
+      const len = Math.sqrt(dx*dx + dy*dy);
+      if(len > 0) {
+        dx /= len;
+        dy /= len;
+      }
+
+      robotPos.x += dx * robotSpeed;
+      robotPos.y += dy * robotSpeed;
+
+      if(robotPos.x < 0) robotPos.x = 0;
+      if(robotPos.x > gameWidth - 40) robotPos.x = gameWidth - 40;
+      if(robotPos.y < 0) robotPos.y = 0;
+      if(robotPos.y > gameHeight - 40) robotPos.y = gameHeight - 40;
+    }
+  }
+
+  function updatePlayer() {
+    if(keysPressed["ArrowLeft"]) {
+      playerPos.x -= playerSpeed;
+      if(playerPos.x < 0) playerPos.x = 0;
+    }
+    if(keysPressed["ArrowRight"]) {
+      playerPos.x += playerSpeed;
+      if(playerPos.x > gameWidth - 40) playerPos.x = gameWidth - 40;
+    }
+    if(keysPressed["ArrowUp"]) {
+      playerPos.y -= playerSpeed;
+      if(playerPos.y < 0) playerPos.y = 0;
+    }
+    if(keysPressed["ArrowDown"]) {
+      playerPos.y += playerSpeed;
+      if(playerPos.y > gameHeight - 40) playerPos.y = gameHeight - 40;
+    }
+  }
+
+  function gameLoop() {
+    if(!gameRunning) return;
+
+    updatePlayer();
+    updateRobot();
+    updatePositions();
+
+    if(isColliding(playerPos, robotPos)) {
+      if(mode === "run") {
+        endGame(false, "Robotas tave pagavo! Pralaimėjai.");
+      } else if(mode === "catch") {
+        endGame(true, "Pagavai robotą! Laimėjai!");
+      }
+      return;
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  function startGame(selectedMode) {
+    mode = selectedMode;
+    gameRunning = true;
+    timer = 120;
+    messageEl.textContent = "";
+    restartBtn.style.display = "none";
+    menuBtn.style.display = "inline-block";
+
+    playerPos = { x: 50, y: 280 };
+    robotPos = { x: 810, y: 280 };
+
+    updatePositions();
+    updateTimer();
+
+    if(timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timer--;
+      updateTimer();
+
+      if(timer <= 0) {
+        if(mode === "run") {
+          endGame(true, "Išgyvenai 2 minutes! Laimėjai!");
+        } else {
+          endGame(false, "Nepavyko pagauti roboto laiku. Pralaimėjai.");
+        }
+      }
+    }, 1000);
+
+    gameArea.style.display = "block";
+    infoBar.style.display = "flex";
+    menu.style.display = "none";
+
+    gameLoop();
+  }
+
+  function updateTimer() {
+    timerEl.textContent = `Liko laiko: ${timer} s`;
+  }
+
+  function endGame(won, msg) {
+    gameRunning = false;
+    clearInterval(timerInterval);
+    messageEl.textContent = msg;
+    restartBtn.style.display = "inline-block";
+  }
+
+  document.addEventListener("keydown", e => {
+    keysPressed[e.code] = true;
+  });
+
+  document.addEventListener("keyup", e => {
+    keysPressed[e.code] = false;
+  });
+
+  restartBtn.addEventListener("click", () => {
+    if(mode) startGame(mode);
+  });
+
+  runModeBtn.addEventListener("click", () => {
+    startGame("run");
+  });
+
+  catchModeBtn.addEventListener("click", () => {
+    startGame("catch");
+  });
+
+</script>
+
+</body>
+</html>

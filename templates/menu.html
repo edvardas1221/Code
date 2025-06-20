@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <title>Meniu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: 'Fredoka One', cursive, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #222;
+      color: white;
+      user-select: none;
+      text-shadow: 0 0 5px rgba(0,0,0,0.7);
+    }
+    h1 {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .welcome {
+      text-align: center;
+      font-size: 24px;
+      margin-top: 20px;
+      margin-bottom: 40px;
+    }
+    .game-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 40px;
+      padding: 0 20px;
+    }
+    .game-tile {
+      width: 200px;
+      text-align: center;
+    }
+    .game-card {
+      display: block;
+      width: 100%;
+      height: 120px;
+      background-size: cover;
+      background-position: center;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+      transition: transform 0.3s ease;
+    }
+    .game-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.6);
+    }
+    .game-title {
+      margin-top: 10px;
+      font-weight: bold;
+      font-size: 18px;
+      color: white;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    }
+    .logout {
+      display: block;
+      width: max-content;
+      margin: 0 auto 40px auto;
+      padding: 10px 20px;
+      background: #e03e3e;
+      color: white;
+      font-weight: bold;
+      border-radius: 6px;
+      text-decoration: none;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+      user-select: none;
+    }
+    .logout:hover {
+      background: #bf2e2e;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="welcome">Sveikas, {{ username }}!</div>
+
+  <h1>Pasirink žaidimą</h1>
+
+  <div class="game-grid">
+    <div class="game-tile">
+      <a href="{{ url_for('game1') }}" class="game-card" style="background-image: url('{{ url_for('static', filename='images/game1.png') }}')"></a>
+      <p class="game-title">Natural disaster survival</p>
+    </div>
+
+    <div class="game-tile">
+      <a href="{{ url_for('game2') }}" class="game-card" style="background-image: url('{{ url_for('static', filename='images/game2.png') }}')"></a>
+      <p class="game-title">Gaudynės!</p>
+    </div>
+  </div>
+
+  <a href="{{ url_for('logout') }}" class="logout">Atsijungti</a>
+
+</body>
+</html>
